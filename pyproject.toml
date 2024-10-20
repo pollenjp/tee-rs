@@ -1,0 +1,5 @@
+[tool.uv.sources]
+interactive-input-sample = { "workspace" = true }
+
+[tool.uv.workspace]
+members = ["tools/*"]
