@@ -38,7 +38,7 @@ fn tee(outputs: &mut [Box<dyn Write>]) -> io::Result<()> {
 
             // 出力
             let s = String::from_utf8_lossy(&buffer);
-            for output in outputs.into_iter() {
+            for output in outputs.iter_mut() {
                 output.write_all(s.as_bytes())?;
                 output.flush()?;
             }
