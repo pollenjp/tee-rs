@@ -19,9 +19,9 @@ env:
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
   MACOSX_DEPLOYMENT_TARGET: 13.0
-  # https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
-  BUILD_GLIB_VERSION: 2.17
-
+defaults:
+  run:
+    shell: bash -eux -o pipefail {0}
 jobs:
   dist:
     strategy:
@@ -37,18 +37,21 @@ jobs:
           #   code-target: win32-arm64
           - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
-          # - os: ubuntu-20.04
-          #   target: aarch64-unknown-linux-gnu
-          # - os: ubuntu-20.04
-          #   target: arm-unknown-linux-gnueabihf
-          # - os: macos-13
-          #   target: x86_64-apple-darwin
-          # - os: macos-13
-          #   target: aarch64-apple-darwin
+            # https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
+            glib_version: 2.17
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
+            glib_version: 2.17
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-musl
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-13
+            target: aarch64-apple-darwin
     name: dist (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    env:
-      RA_TARGET: ${{ matrix.target }}
     steps:
       - name: Prepare
         run: |
@@ -60,18 +63,21 @@ jobs:
             echo CARGO_HOME="${{ runner.temp }}/.cargo"
             echo PYTHONUSERBASE="${{ runner.temp }}/.local"
           } >> "$GITHUB_ENV"
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" \
-            | sh -s -- --profile minimal --default-toolchain none -y
-          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
+          {
+            echo "${{ runner.temp }}/.local/bin"
+          } >> "$GITHUB_PATH"
+      # - name: Install Rust
+      #   run: |
+      #     curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" \
+      #       | sh -s -- --profile minimal --default-toolchain none -y
+      #     echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Update pip
         run: pip install --user -U pip
-      - name: Install ziglang
-        run: pip install --user ziglang
+      - name: Install cargo-zigbuild (and ziglang)
+        run: pip install --user cargo-zigbuild
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
@@ -81,14 +87,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
-      - name: Debug
-        run: |
-          set +e
-          ls -la ~/.rustup
-          ls -la ~/.cargo
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }}
-
+        run: |
+          target="${{ matrix.target }}"
+          if [[ -n "${{ matrix.target.glib_version }}" ]]; then
+            target="${target}.${{ matrix.target.glib_version }}"
+          fi
+          cargo zigbuild --target="${target}"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
