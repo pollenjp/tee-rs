@@ -1,0 +1,118 @@
+name: "Build binaries"
+on:
+  workflow_call:
+    inputs:
+      plan: # https://opensource.axo.dev/cargo-dist/book/ci/customizing.html
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - .github/workflows/build-binaries.yml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_NAME: tee-rs
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTFLAGS: "-D warnings -W unreachable-pub"
+  RUSTUP_MAX_RETRIES: 10
+  FETCH_DEPTH: 0 # pull in the tags for the version string
+  MACOSX_DEPLOYMENT_TARGET: 13.0
+defaults:
+  run:
+    shell: bash -eux -o pipefail {0}
+jobs:
+  dist:
+    strategy:
+      matrix:
+        include:
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   code-target: win32-x64
+          # - os: windows-latest
+          #   target: i686-pc-windows-msvc
+          # - os: windows-latest
+          #   target: aarch64-pc-windows-msvc
+          #   code-target: win32-arm64
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+            # https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
+            glib_version: 2.17
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
+            glib_version: 2.17
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-musl
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-13
+            target: aarch64-apple-darwin
+    name: dist (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Prepare
+        run: |
+          {
+            echo XDG_CONFIG_HOME="${{ runner.temp }}/.config"
+            echo XDG_CACHE_HOME="${{ runner.temp }}/.cache"
+            echo XDG_DATA_HOME="${{ runner.temp }}/.local/share"
+            echo XDG_BIN_HOME="${{ runner.temp }}/.local/bin"
+            echo CARGO_HOME="${{ runner.temp }}/.cargo"
+            echo PYTHONUSERBASE="${{ runner.temp }}/.local"
+          } >> "$GITHUB_ENV"
+          {
+            echo "${{ runner.temp }}/.local/bin"
+          } >> "$GITHUB_PATH"
+      # - name: Install Rust
+      #   run: |
+      #     curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" \
+      #       | sh -s -- --profile minimal --default-toolchain none -y
+      #     echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Update pip
+        run: pip install --user -U pip
+      - name: Install cargo-zigbuild (and ziglang)
+        run: pip install --user cargo-zigbuild
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.target }}
+          rustup component add rust-src
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+      - name: Dist
+        run: |
+          target="${{ matrix.target }}"
+          if [[ -n "${{ matrix.glib_version }}" ]]; then
+            target="${target}.${{ matrix.glib_version }}"
+          fi
+          cargo zigbuild --target="${target}" --release
+      - name: Archive binary for Unix-like systems
+        if: ${{ !contains(matrix.target, 'windows-msvc') }}
+        run: |
+          ARCHIVE_NAME="${{ env.APP_NAME }}-${{ matrix.target }}"
+          ARCHIVE_FILE="$ARCHIVE_NAME.tar.gz"
+
+          mkdir -p "$ARCHIVE_NAME"
+          cp "target/${{ matrix.target }}/release/${{ env.APP_NAME }}" "$ARCHIVE_NAME/${{ env.APP_NAME }}"
+          tar czvf "$ARCHIVE_FILE" "$ARCHIVE_NAME"
+          shasum -a 256 "$ARCHIVE_FILE" > "$ARCHIVE_FILE.sha256"
+      # - name: Archive binary for Windows
+      #   if: ${{ contains(matrix.target, 'windows-msvc') }}
+      #   run: | # TODO: windows support
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.target }}
+          retention-days: 1
+          path: |
+            *.tar.gz
+            *.sha256
