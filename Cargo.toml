@@ -3,6 +3,7 @@ name = "tee-rs"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/pollenjp/tee-rs"
+license = "MIT"
 
 [dependencies]
 libc = "0.2.161"
