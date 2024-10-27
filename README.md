@@ -5,6 +5,10 @@ Source code is available at <https://github.com/coreutils/coreutils>.
 
 `tee-rs` is a Rust implementation of `tee` command.
 
+## Install
+
+See release page.
+
 ## Development
 
 Requirements
