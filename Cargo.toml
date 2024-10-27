@@ -1,5 +1,6 @@
 [package]
 name = "tee-rs"
+description = "A Rust implementation of the tee command"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/pollenjp/tee-rs"
