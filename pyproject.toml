@@ -1,5 +1,6 @@
 [tool.uv.sources]
 interactive-input-sample = { "workspace" = true }
+python-sample = { "workspace" = true }
 
 [tool.uv.workspace]
-members = ["tools/*"]
+members = ["tools/interactive-input-sample", "tools/python-sample"]

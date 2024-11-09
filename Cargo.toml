@@ -7,9 +7,14 @@ repository = "https://github.com/pollenjp/tee-rs"
 license = "MIT"
 
 [dependencies]
+anyhow = "1.0.91"
 libc = "0.2.161"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[workspace]
+
+members = ["tools/delay-sample"]

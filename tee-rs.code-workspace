@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": "./tools/python-sample/"
+    },
+    {
+      "path": "./tools/interactive-input-sample/"
+    },
+    {
+      "path": "."
+    }
+  ],
+  "settings": { }
+}
