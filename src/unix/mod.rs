@@ -1,4 +1,4 @@
-#![cfg(linux, macos)]
+#![cfg(any(target_os = "linux", target_os = "macos"))]
 
 use ::anyhow::Result;
 use ::std::io::{self, Read, Write};
