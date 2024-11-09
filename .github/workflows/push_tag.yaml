@@ -1,0 +1,47 @@
+name: Push tag
+on:
+  workflow_dispatch:
+    # inputs:
+    #   push_tag:
+    #     description: "Push tag"
+    #     required: true
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash -eux -o pipefail -o posix {0}
+jobs:
+  push_tag:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Extract package version
+        id: package_version
+        run: |
+          pyscript=$(
+            cat <<'__PYTHON_EOF__'
+          import tomllib
+          import pathlib
+          config = pathlib.Path("Cargo.toml")
+          with open(config, "rb") as f:
+            data = tomllib.load(f)
+          print(data["package"]["version"])
+          __PYTHON_EOF__
+          )
+          version=$(python -c "${pyscript}")
+          echo "package_version=${version}" >> $GITHUB_OUTPUT
+      - name: Push tag
+        run: |
+          version="${{ steps.package_version.outputs.package_version }}"
+          if [[ -z "${version}" ]]; then
+            echo "Failed to extract package version" >&2
+            exit 1
+          fi
+          git tag "v${version}"
+          git push origin "refs/tags/v${version}"
