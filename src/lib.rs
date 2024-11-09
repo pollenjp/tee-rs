@@ -25,9 +25,7 @@ fn tee(outputs: &mut [Box<dyn Write>]) -> Result<()> {
 
     #[cfg(target_os = "windows")]
     {
-        // windows::tee(outputs)
-        windows::tee2(outputs)
-        // windows::tee3(outputs)
+        windows::tee(outputs)
     }
 }
 
