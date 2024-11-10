@@ -70,9 +70,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Update pip
-        run: pip install --user -U pip
+        run: python -m pip install --user -U pip
       - name: Install cargo-zigbuild (and ziglang)
-        run: pip install --user cargo-zigbuild
+        run: python -m pip install --user cargo-zigbuild
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
