@@ -48,27 +48,61 @@ jobs:
     name: dist (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Prepare
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare for common
         run: |
+          CARGO_HOME="${{ runner.temp }}/.cargo"
+          echo CARGO_HOME="${CARGO_HOME}" >> "$GITHUB_ENV"
+          echo "${CARGO_HOME}/bin"        >> "$GITHUB_PATH"
+      - name: Prepare for Linux
+        if: ${{ contains(matrix.target, 'linux') }}
+        run: |
+          XDG_BIN_HOME="${{ runner.temp }}/.local/bin"
           {
             echo XDG_CONFIG_HOME="${{ runner.temp }}/.config"
             echo XDG_CACHE_HOME="${{ runner.temp }}/.cache"
             echo XDG_DATA_HOME="${{ runner.temp }}/.local/share"
-            echo XDG_BIN_HOME="${{ runner.temp }}/.local/bin"
-            echo CARGO_HOME="${{ runner.temp }}/.cargo"
+            echo XDG_BIN_HOME="${XDG_BIN_HOME}"
             echo PYTHONUSERBASE="${{ runner.temp }}/.local"
           } >> "$GITHUB_ENV"
           {
-            echo "${{ runner.temp }}/.local/bin"
+            echo "${XDG_BIN_HOME}"
           } >> "$GITHUB_PATH"
+      - name: Prepare for MacOS
+        if: ${{ contains(matrix.target, 'darwin') }}
+        run: |
+          PYTHONUSERBASE="${{ runner.temp }}/.local"
+          echo PYTHONUSERBASE="$PYTHONUSERBASE/.local" >> "$GITHUB_ENV"
+          echo "$PYTHONUSERBASE/.local/bin"            >> "$GITHUB_PATH"
+      - name: Prepare for Windows
+        if: ${{ contains(matrix.target, 'windows') }}
+        run: |
+          export PYTHONUSERBASE="${{ runner.temp }}/.local"
+          echo PYTHONUSERBASE="$PYTHONUSERBASE" >> "$GITHUB_ENV"
+
+          # Get 'Scripts' path
+          py_content=$(
+            cat <<'__PY_CONTENT_EOF__'
+          import site
+          from pathlib import Path
+
+          user_site_pkgs_path = Path(site.getusersitepackages())
+          print(user_site_pkgs_path.parent / "Scripts")
+          __PY_CONTENT_EOF__
+          )
+          py_scripts_path=$(python -c "$py_content")
+          if [[ -z "$py_scripts_path" ]]; then
+            echo "Failed to get 'Scripts' path" >&2
+            exit 1
+          fi
+          echo "$py_scripts_path" >> "$GITHUB_PATH"
       # - name: Install Rust
       #   run: |
       #     curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" \
       #       | sh -s -- --profile minimal --default-toolchain none -y
       #     echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - name: Update pip
         run: python -m pip install --user -U pip
       - name: Install cargo-zigbuild (and ziglang)
@@ -113,4 +147,5 @@ jobs:
           retention-days: 1
           path: |
             *.tar.gz
+            *.zip
             *.sha256
