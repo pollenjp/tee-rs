@@ -4,6 +4,9 @@
       "path": "./tools/python-sample/"
     },
     {
+      "path": "./tools/delay-sample/"
+    },
+    {
       "path": "./tools/interactive-input-sample/"
     },
     {
