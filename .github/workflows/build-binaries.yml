@@ -30,8 +30,6 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
           - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
             # https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
@@ -101,9 +99,13 @@ jobs:
           cp "target/${{ matrix.target }}/release/${{ env.APP_NAME }}" "$ARCHIVE_NAME/${{ env.APP_NAME }}"
           tar czvf "$ARCHIVE_FILE" "$ARCHIVE_NAME"
           shasum -a 256 "$ARCHIVE_FILE" > "$ARCHIVE_FILE.sha256"
-      # - name: Archive binary for Windows
-      #   if: ${{ contains(matrix.target, 'windows-msvc') }}
-      #   run: | # TODO: windows support
+      - name: Archive binary for Windows
+        if: ${{ contains(matrix.target, 'windows-msvc') }}
+        run: |
+          ARCHIVE_NAME="${{ env.APP_NAME }}-${{ matrix.target }}"
+          ARCHIVE_FILE="$ARCHIVE_NAME.zip"
+          7z a "$ARCHIVE_FILE" ./target/${{ matrix.target }}/release/${{ env.APP_NAME }}.exe
+          sha256sum $ARCHIVE_FILE > $ARCHIVE_FILE.sha256
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
