@@ -17,4 +17,4 @@ lto = "thin"
 
 [workspace]
 
-members = ["tools/delay-sample"]
+members = [".", "tools/delay-sample"]
